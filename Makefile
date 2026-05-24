@@ -7,3 +7,7 @@ build-calculator:
 
 copy-into-device:
 	@chmod +x ./scripts/copy.sh && ./scripts/copy.sh
+
+test:
+	@echo "Running tests..."
+	@tinygo test -v ./...
