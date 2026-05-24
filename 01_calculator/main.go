@@ -2,29 +2,18 @@ package main
 
 import (
 	"image/color"
-	"machine"
 	"time"
 
-	"tinygo.org/x/drivers"
-	"tinygo.org/x/drivers/ssd1306"
+	"github.com/edgejay/tinygo-experiments/internal/display/ssd1306"
+	"github.com/edgejay/tinygo-experiments/internal/machine/rp2040"
+
 	"tinygo.org/x/tinyfont"
 	"tinygo.org/x/tinyfont/gophers"
 )
 
 func main() {
-	machine.I2C0.Configure(machine.I2CConfig{
-		Frequency: 2.8 * machine.MHz,
-		SDA:       machine.GPIO12,
-		SCL:       machine.GPIO13,
-	})
-
-	display := ssd1306.NewI2C(machine.I2C0)
-	display.Configure(ssd1306.Config{
-		Address:  0x3C,
-		Width:    128,
-		Height:   64,
-		Rotation: drivers.Rotation180,
-	})
+	rp2040.ConfigureMachine()
+	display := ssd1306.ConfigureDisplay(true)
 	display.ClearDisplay()
 	time.Sleep(50 * time.Millisecond)
 
