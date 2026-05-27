@@ -5,6 +5,7 @@ import (
 
 	disp "github.com/edgejay/tinygo-experiments/internal/display"
 	"github.com/edgejay/tinygo-experiments/internal/display/ssd1306"
+	"github.com/edgejay/tinygo-experiments/internal/joystick"
 	"github.com/edgejay/tinygo-experiments/internal/keyboard"
 	"github.com/edgejay/tinygo-experiments/internal/machine/rp2040"
 )
@@ -42,6 +43,13 @@ func main() {
 		kb.Listen(keyCh)
 	}()
 
+	js := joystick.NewJoystick()
+	jsCh := make(chan joystick.JoystickState)
+
+	go func() {
+		js.Listen(jsCh)
+	}()
+
 	displayedText := ""
 
 	for {
@@ -50,6 +58,12 @@ func main() {
 			display.ClearDisplay()
 			displayedText += string(key)
 			disp.ShowText(display, 5, 30, displayedText)
+		case jsState := <-jsCh:
+			if jsState.CenterButtonPressed {
+				display.ClearDisplay()
+				displayedText = ""
+				disp.ShowText(display, 5, 30, displayedText)
+			}
 		}
 	}
 }
