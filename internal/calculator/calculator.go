@@ -10,8 +10,8 @@ type Calculator struct {
 }
 
 const (
-	division       = "÷"
-	multiplication = "×"
+	division       = "/"
+	multiplication = "*"
 	addition       = "+"
 	subtraction    = "-"
 )
@@ -29,7 +29,7 @@ func (c *Calculator) Calculate() (Number, error) {
 	// find first occurrence of division or multiplication with two numbers around it
 	// then replace that occurrence with the result of the operation,
 	// and repeat until no more division or multiplication is found
-	re := regexp.MustCompile(`(\d+(?:\.\d+)?)([÷×])(\d+(?:\.\d+)?)`)
+	re := regexp.MustCompile(`(\d+(?:\.\d+)?)([/\*])(\d+(?:\.\d+)?)`)
 	for {
 		matchIdx := re.FindStringSubmatchIndex(c.input)
 		if len(matchIdx) == 0 {

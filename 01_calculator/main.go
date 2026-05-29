@@ -4,37 +4,27 @@ import (
 	"time"
 
 	disp "github.com/edgejay/tinygo-experiments/internal/display"
-	"github.com/edgejay/tinygo-experiments/internal/display/ssd1306"
+	dd "github.com/edgejay/tinygo-experiments/internal/display/ssd1306"
 	"github.com/edgejay/tinygo-experiments/internal/joystick"
+	jsm "github.com/edgejay/tinygo-experiments/internal/joystick/mapping"
 	"github.com/edgejay/tinygo-experiments/internal/keyboard"
+	kbm "github.com/edgejay/tinygo-experiments/internal/keyboard/mapping"
 	"github.com/edgejay/tinygo-experiments/internal/machine/rp2040"
+	"tinygo.org/x/drivers/ssd1306"
 )
 
-func main() {
-	rp2040.ConfigureMachine()
-	display := ssd1306.ConfigureDisplay(true)
+func setupDisplay() *ssd1306.Device {
+	display := dd.ConfigureDisplay(true)
 	display.ClearDisplay()
 	time.Sleep(50 * time.Millisecond)
-
 	disp.ShowText(display, 5, 12, "CALCULATOR")
+	return display
+}
 
-	kb, err := keyboard.NewKeyboard(map[int]rune{
-		0:  '7',
-		1:  '4',
-		2:  '1',
-		3:  '8',
-		4:  '5',
-		5:  '2',
-		6:  '9',
-		7:  '6',
-		8:  '3',
-		9:  '0',
-		10: '.',
-		11: '=',
-	})
-
+func setupKeyboard() (*keyboard.Keyboard, chan rune, error) {
+	kb, err := keyboard.NewKeyboard(kbm.GetCalculatorKeysMapping())
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
 	keyCh := make(chan rune)
@@ -43,15 +33,32 @@ func main() {
 		kb.Listen(keyCh)
 	}()
 
-	js := joystick.NewJoystick()
+	return kb, keyCh, nil
+}
+
+func setupJoystick() (*joystick.Joystick, chan joystick.JoystickState) {
+	js := joystick.NewJoystick(jsm.GetCalculatorKeysMapping())
 	jsCh := make(chan joystick.JoystickState)
 
 	go func() {
-		js.Listen(jsCh)
+		js.Listen(jsCh, 250*time.Millisecond)
 	}()
 
-	displayedText := ""
+	return js, jsCh
+}
 
+func main() {
+	rp2040.ConfigureMachine()
+	display := setupDisplay()
+
+	_, keyCh, err := setupKeyboard()
+	if err != nil {
+		panic(err)
+	}
+
+	js, jsCh := setupJoystick()
+
+	displayedText := ""
 	for {
 		select {
 		case key := <-keyCh:
@@ -59,11 +66,27 @@ func main() {
 			displayedText += string(key)
 			disp.ShowText(display, 5, 30, displayedText)
 		case jsState := <-jsCh:
-			if jsState.CenterButtonPressed {
-				display.ClearDisplay()
-				displayedText = ""
-				disp.ShowText(display, 5, 30, displayedText)
+			if jsState.IsNeutral() {
+				continue
 			}
+
+			display.ClearDisplay()
+			if jsState.CenterButtonPressed {
+				displayedText = ""
+			}
+			if jsState.Up {
+				displayedText += js.GetKey("up")
+			}
+			if jsState.Left {
+				displayedText += js.GetKey("left")
+			}
+			if jsState.Down {
+				displayedText += js.GetKey("down")
+			}
+			if jsState.Right {
+				displayedText += js.GetKey("right")
+			}
+			disp.ShowText(display, 5, 30, displayedText)
 		}
 	}
 }
