@@ -12,11 +12,12 @@ import (
 	"github.com/edgejay/tinygo-experiments/internal/keyboard"
 	kbm "github.com/edgejay/tinygo-experiments/internal/keyboard/mapping"
 	"github.com/edgejay/tinygo-experiments/internal/machine/rp2040"
+	"github.com/edgejay/tinygo-experiments/internal/rotary"
 	"tinygo.org/x/drivers/ssd1306"
 )
 
 const (
-	displayTextX        = 5
+	displayTextX        = 3
 	displayTextY        = 42
 	displayTextLenLimit = 10
 )
@@ -34,25 +35,29 @@ func setupKeyboard() (*keyboard.Keyboard, chan rune, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
 	keyCh := make(chan rune)
-
 	go func() {
 		kb.Listen(keyCh)
 	}()
-
 	return kb, keyCh, nil
 }
 
 func setupJoystick() (*joystick.Joystick, chan joystick.JoystickState) {
 	js := joystick.NewJoystick(jsm.GetCalculatorKeysMapping())
 	jsCh := make(chan joystick.JoystickState)
-
 	go func() {
-		js.Listen(jsCh, 200*time.Millisecond)
+		js.Listen(jsCh, 100*time.Millisecond)
 	}()
-
 	return js, jsCh
+}
+
+func setupRotaryEncoder() (*rotary.RotaryEncoder, chan rotary.RotaryState) {
+	rotaryEncoder := rotary.NewRotaryEncoder(0, 0, 10, 4)
+	rotaryCh := make(chan rotary.RotaryState)
+	go func() {
+		rotaryEncoder.Listen(rotaryCh)
+	}()
+	return rotaryEncoder, rotaryCh
 }
 
 func isLastCharOperator(s string) bool {
@@ -68,12 +73,17 @@ func main() {
 	rp2040.ConfigureMachine()
 	display := setupDisplay()
 
+	// setup keyboard
 	_, keyCh, err := setupKeyboard()
 	if err != nil {
 		panic(err)
 	}
 
+	// setup joystick
 	js, jsCh := setupJoystick()
+
+	// setup rotary encoder
+	_, rotaryCh := setupRotaryEncoder()
 
 	displayedText := ""
 	for {
@@ -130,6 +140,8 @@ func main() {
 
 			// update display
 			disp.ShowText(display, displayTextX, displayTextY, displayedText)
+		case rotaryState := <-rotaryCh:
+			println("Rotary encoder value:", rotaryState.Value)
 		}
 	}
 }

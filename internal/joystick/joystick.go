@@ -27,7 +27,6 @@ func (jss JoystickState) IsNeutral() bool {
 }
 
 func init() {
-	println("Initializing joystick...")
 	machine.InitADC()
 }
 

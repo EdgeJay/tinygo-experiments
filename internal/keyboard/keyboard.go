@@ -26,8 +26,6 @@ type Keyboard struct {
 }
 
 func init() {
-	println("Initializing keyboard...")
-
 	// init pin config
 	for _, c := range colPins {
 		c.Configure(machine.PinConfig{Mode: machine.PinOutput})
