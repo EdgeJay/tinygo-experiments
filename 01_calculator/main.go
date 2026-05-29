@@ -52,7 +52,7 @@ func setupJoystick() (*joystick.Joystick, chan joystick.JoystickState) {
 }
 
 func setupRotaryEncoder() (*rotary.RotaryEncoder, chan rotary.RotaryState) {
-	rotaryEncoder := rotary.NewRotaryEncoder(0, 0, 10, 4)
+	rotaryEncoder := rotary.NewRotaryEncoder(0, 0, 0, 4)
 	rotaryCh := make(chan rotary.RotaryState)
 	go func() {
 		rotaryEncoder.Listen(rotaryCh)
@@ -69,6 +69,34 @@ func isLastCharOperator(s string) bool {
 	return lastChar == '+' || lastChar == '-' || lastChar == '*' || lastChar == '/'
 }
 
+func updateDisplayedText(
+	display *ssd1306.Device,
+	rotaryEncoder *rotary.RotaryEncoder,
+	displayedText string,
+) {
+	dText := displayedText
+	// limit displayed text length to prevent overflow
+	if len(displayedText) > displayTextLenLimit {
+		dText = displayedText[len(displayedText)-displayTextLenLimit:]
+	}
+	disp.ShowText(display, displayTextX, displayTextY, dText)
+
+	// update rotary encoder range
+	rotaryEncoder.SetRange(0, len(displayedText)-displayTextLenLimit)
+	rotaryEncoder.Value = rotaryEncoder.MaxValue
+}
+
+func shiftDisplayedText(
+	display *ssd1306.Device,
+	displayedText string,
+	offset int,
+) {
+	if offset >= 0 && offset <= len(displayedText)-displayTextLenLimit {
+		dText := displayedText[offset:]
+		disp.ShowText(display, displayTextX, displayTextY, dText)
+	}
+}
+
 func main() {
 	rp2040.ConfigureMachine()
 	display := setupDisplay()
@@ -83,7 +111,7 @@ func main() {
 	js, jsCh := setupJoystick()
 
 	// setup rotary encoder
-	_, rotaryCh := setupRotaryEncoder()
+	rotaryEncoder, rotaryCh := setupRotaryEncoder()
 
 	displayedText := ""
 	for {
@@ -104,13 +132,14 @@ func main() {
 			}
 
 			// update display
-			disp.ShowText(display, displayTextX, displayTextY, displayedText)
+			updateDisplayedText(display, rotaryEncoder, displayedText)
 		case jsState := <-jsCh:
-			// clear display if center button is pressed
+			// clear display and reset rotary encoder if center button is pressed
 			if jsState.CenterButtonPressed {
 				display.ClearDisplay()
 				displayedText = ""
-				disp.ShowText(display, displayTextX, displayTextY, displayedText)
+				updateDisplayedText(display, rotaryEncoder, displayedText)
+				rotaryEncoder.Reset(0, 0, 0)
 				continue
 			}
 
@@ -139,9 +168,11 @@ func main() {
 			}
 
 			// update display
-			disp.ShowText(display, displayTextX, displayTextY, displayedText)
+			updateDisplayedText(display, rotaryEncoder, displayedText)
 		case rotaryState := <-rotaryCh:
 			println("Rotary encoder value:", rotaryState.Value)
+			display.ClearDisplay()
+			shiftDisplayedText(display, displayedText, rotaryState.Value)
 		}
 	}
 }

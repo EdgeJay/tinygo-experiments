@@ -66,3 +66,22 @@ func (re *RotaryEncoder) Listen(cb chan<- RotaryState) {
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+
+func (re *RotaryEncoder) SetRange(minValue, maxValue int) {
+	re.MinValue = minValue
+	re.MaxValue = maxValue
+
+	if re.Value < minValue {
+		re.Value = minValue
+	} else if re.Value > maxValue {
+		re.Value = maxValue
+	}
+}
+
+func (re *RotaryEncoder) Reset(initValue, minValue, maxValue int) {
+	re.Value = initValue
+	re.MinValue = minValue
+	re.MaxValue = maxValue
+	re.oldRotaryValue = 0
+	rotaryEncoder.SetPosition(0)
+}
