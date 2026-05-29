@@ -18,7 +18,7 @@ import (
 
 const (
 	displayTextX        = 3
-	displayTextY        = 42
+	displayTextY        = 45
 	displayTextLenLimit = 10
 )
 
@@ -120,6 +120,8 @@ func main() {
 			display.ClearDisplay()
 			if key != '=' {
 				displayedText += string(key)
+				// update display
+				updateDisplayedText(display, rotaryEncoder, displayedText)
 			} else {
 				// do calculation
 				calc := calculator.NewCalculator(displayedText)
@@ -129,10 +131,13 @@ func main() {
 				} else {
 					displayedText = strconv.FormatFloat(float64(result), 'f', -1, 64)
 				}
+				// update display
+				updateDisplayedText(display, rotaryEncoder, displayedText)
+				// shift back to front of displayed text
+				display.ClearDisplay()
+				rotaryEncoder.Value = 0
+				shiftDisplayedText(display, displayedText, rotaryEncoder.Value)
 			}
-
-			// update display
-			updateDisplayedText(display, rotaryEncoder, displayedText)
 		case jsState := <-jsCh:
 			// clear display and reset rotary encoder if center button is pressed
 			if jsState.CenterButtonPressed {
@@ -170,7 +175,6 @@ func main() {
 			// update display
 			updateDisplayedText(display, rotaryEncoder, displayedText)
 		case rotaryState := <-rotaryCh:
-			println("Rotary encoder value:", rotaryState.Value)
 			display.ClearDisplay()
 			shiftDisplayedText(display, displayedText, rotaryState.Value)
 		}
