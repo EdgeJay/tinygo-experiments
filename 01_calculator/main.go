@@ -15,6 +15,12 @@ import (
 	"tinygo.org/x/drivers/ssd1306"
 )
 
+const (
+	displayTextX        = 5
+	displayTextY        = 42
+	displayTextLenLimit = 10
+)
+
 func setupDisplay() *ssd1306.Device {
 	display := dd.ConfigureDisplay(true)
 	display.ClearDisplay()
@@ -43,10 +49,19 @@ func setupJoystick() (*joystick.Joystick, chan joystick.JoystickState) {
 	jsCh := make(chan joystick.JoystickState)
 
 	go func() {
-		js.Listen(jsCh, 250*time.Millisecond)
+		js.Listen(jsCh, 200*time.Millisecond)
 	}()
 
 	return js, jsCh
+}
+
+func isLastCharOperator(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+
+	lastChar := s[len(s)-1]
+	return lastChar == '+' || lastChar == '-' || lastChar == '*' || lastChar == '/'
 }
 
 func main() {
@@ -77,16 +92,29 @@ func main() {
 					displayedText = strconv.FormatFloat(float64(result), 'f', -1, 64)
 				}
 			}
-			disp.ShowText(display, 5, 30, displayedText)
+
+			// update display
+			disp.ShowText(display, displayTextX, displayTextY, displayedText)
 		case jsState := <-jsCh:
-			if jsState.IsNeutral() {
+			// clear display if center button is pressed
+			if jsState.CenterButtonPressed {
+				display.ClearDisplay()
+				displayedText = ""
+				disp.ShowText(display, displayTextX, displayTextY, displayedText)
+				continue
+			}
+
+			// skip if:
+			// joystick is in the neutral position, or
+			// last character is an operator, or
+			// displayed text is empty (to prevent starting with an operator)
+			if jsState.IsNeutral() || isLastCharOperator(displayedText) || displayedText == "" {
 				continue
 			}
 
 			display.ClearDisplay()
-			if jsState.CenterButtonPressed {
-				displayedText = ""
-			}
+
+			// add math operators based on the joystick direction
 			if jsState.Up {
 				displayedText += js.GetKey("up")
 			}
@@ -99,7 +127,9 @@ func main() {
 			if jsState.Right {
 				displayedText += js.GetKey("right")
 			}
-			disp.ShowText(display, 5, 30, displayedText)
+
+			// update display
+			disp.ShowText(display, displayTextX, displayTextY, displayedText)
 		}
 	}
 }
