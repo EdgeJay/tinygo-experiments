@@ -1,8 +1,10 @@
 package main
 
 import (
+	"strconv"
 	"time"
 
+	"github.com/edgejay/tinygo-experiments/internal/calculator"
 	disp "github.com/edgejay/tinygo-experiments/internal/display"
 	dd "github.com/edgejay/tinygo-experiments/internal/display/ssd1306"
 	"github.com/edgejay/tinygo-experiments/internal/joystick"
@@ -63,7 +65,18 @@ func main() {
 		select {
 		case key := <-keyCh:
 			display.ClearDisplay()
-			displayedText += string(key)
+			if key != '=' {
+				displayedText += string(key)
+			} else {
+				// do calculation
+				calc := calculator.NewCalculator(displayedText)
+				result, err := calc.Calculate()
+				if err != nil {
+					displayedText = "Error"
+				} else {
+					displayedText = strconv.FormatFloat(float64(result), 'f', -1, 64)
+				}
+			}
 			disp.ShowText(display, 5, 30, displayedText)
 		case jsState := <-jsCh:
 			if jsState.IsNeutral() {
