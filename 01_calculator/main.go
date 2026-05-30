@@ -22,11 +22,15 @@ const (
 	displayTextLenLimit = 10
 )
 
+func showCalculatorTitle(display *ssd1306.Device) {
+	disp.ShowText(display, 5, 12, "CALCULATOR")
+}
+
 func setupDisplay() *ssd1306.Device {
 	display := dd.ConfigureDisplay(true)
 	display.ClearDisplay()
 	time.Sleep(50 * time.Millisecond)
-	disp.ShowText(display, 5, 12, "CALCULATOR")
+	showCalculatorTitle(display)
 	return display
 }
 
@@ -77,6 +81,8 @@ func updateDisplayedText(
 	dText := displayedText
 	// limit displayed text length to prevent overflow
 	if len(displayedText) > displayTextLenLimit {
+		showLeftArrow(display, true)
+		showRightArrow(display, false)
 		dText = displayedText[len(displayedText)-displayTextLenLimit:]
 	}
 	disp.ShowText(display, displayTextX, displayTextY, dText)
@@ -92,8 +98,30 @@ func shiftDisplayedText(
 	offset int,
 ) {
 	if offset >= 0 && offset <= len(displayedText)-displayTextLenLimit {
+		showLeftArrow(display, offset > 0)
+		showRightArrow(display, offset == 0)
 		dText := displayedText[offset:]
 		disp.ShowText(display, displayTextX, displayTextY, dText)
+	} else {
+		showLeftArrow(display, false)
+		showRightArrow(display, false)
+		disp.ShowText(display, displayTextX, displayTextY, displayedText)
+	}
+}
+
+func showLeftArrow(display *ssd1306.Device, show bool) {
+	if show {
+		disp.ShowText(display, 3, 10, "<")
+	} else {
+		disp.ShowText(display, 3, 10, "")
+	}
+}
+
+func showRightArrow(display *ssd1306.Device, show bool) {
+	if show {
+		disp.ShowText(display, 115, 10, ">")
+	} else {
+		disp.ShowText(display, 115, 10, "")
 	}
 }
 
@@ -145,6 +173,7 @@ func main() {
 				displayedText = ""
 				updateDisplayedText(display, rotaryEncoder, displayedText)
 				rotaryEncoder.Reset(0, 0, 0)
+				showCalculatorTitle(display)
 				continue
 			}
 
