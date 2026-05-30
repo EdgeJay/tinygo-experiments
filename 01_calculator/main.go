@@ -11,6 +11,7 @@ import (
 	jsm "github.com/edgejay/tinygo-experiments/internal/joystick/mapping"
 	"github.com/edgejay/tinygo-experiments/internal/keyboard"
 	kbm "github.com/edgejay/tinygo-experiments/internal/keyboard/mapping"
+	"github.com/edgejay/tinygo-experiments/internal/led"
 	"github.com/edgejay/tinygo-experiments/internal/machine/rp2040"
 	"github.com/edgejay/tinygo-experiments/internal/rotary"
 	"tinygo.org/x/drivers/ssd1306"
@@ -34,12 +35,12 @@ func setupDisplay() *ssd1306.Device {
 	return display
 }
 
-func setupKeyboard() (*keyboard.Keyboard, chan rune, error) {
+func setupKeyboard() (*keyboard.Keyboard, chan keyboard.KeyState, error) {
 	kb, err := keyboard.NewKeyboard(kbm.GetCalculatorKeysMapping())
 	if err != nil {
 		return nil, nil, err
 	}
-	keyCh := make(chan rune)
+	keyCh := make(chan keyboard.KeyState)
 	go func() {
 		kb.Listen(keyCh)
 	}()
@@ -129,6 +130,11 @@ func main() {
 	rp2040.ConfigureMachine()
 	display := setupDisplay()
 
+	leds, err := led.NewWS2812B()
+	if err != nil {
+		panic(err)
+	}
+
 	// setup keyboard
 	_, keyCh, err := setupKeyboard()
 	if err != nil {
@@ -144,10 +150,10 @@ func main() {
 	displayedText := ""
 	for {
 		select {
-		case key := <-keyCh:
+		case keyState := <-keyCh:
 			display.ClearDisplay()
-			if key != '=' {
-				displayedText += string(key)
+			if keyState.Key != '=' {
+				displayedText += string(keyState.Key)
 				// update display
 				updateDisplayedText(display, rotaryEncoder, displayedText)
 			} else {
@@ -166,6 +172,13 @@ func main() {
 				rotaryEncoder.Value = 0
 				shiftDisplayedText(display, displayedText, rotaryEncoder.Value)
 			}
+
+			// light up LEDs when a key is pressed
+			go func() {
+				leds.PutColour(keyState.KeyIndex, 0xFF0000FF) // green
+				time.Sleep(200 * time.Millisecond)
+				leds.PutColour(keyState.KeyIndex, 0x00000000) // off
+			}()
 		case jsState := <-jsCh:
 			// clear display and reset rotary encoder if center button is pressed
 			if jsState.CenterButtonPressed {

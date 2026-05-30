@@ -25,6 +25,11 @@ type Keyboard struct {
 	keysMapping map[int]rune
 }
 
+type KeyState struct {
+	Key      rune
+	KeyIndex int
+}
+
 func init() {
 	// init pin config
 	for _, c := range colPins {
@@ -58,7 +63,7 @@ func NewKeyboard(keysMapping map[int]rune) (*Keyboard, error) {
 	return &Keyboard{keysMapping}, nil
 }
 
-func (kb *Keyboard) Listen(cb chan<- rune) {
+func (kb *Keyboard) Listen(cb chan<- KeyState) {
 	for {
 		for colIdx, c := range colPins {
 			resetColPins()
@@ -68,7 +73,10 @@ func (kb *Keyboard) Listen(cb chan<- rune) {
 			for rowIdx, r := range rowPins {
 				if r.Get() { // key is pressed
 					keyIdx := rowIdx + colIdx*len(rowPins)
-					cb <- kb.keysMapping[keyIdx]
+					cb <- KeyState{
+						Key:      kb.keysMapping[keyIdx],
+						KeyIndex: keyIdx,
+					}
 					time.Sleep(200 * time.Millisecond)
 				}
 			}

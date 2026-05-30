@@ -3,6 +3,7 @@ module github.com/edgejay/tinygo-experiments
 go 1.26.1
 
 require (
+	github.com/tinygo-org/pio v0.3.0
 	tinygo.org/x/drivers v0.35.0
 	tinygo.org/x/tinyfont v0.7.0
 )
